@@ -3,15 +3,15 @@
 import {
   PromptInput,
   PromptInputButton,
+  PromptInputFooter,
   type PromptInputMessage,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
+  PromptInputSelect,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectTrigger,
+  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputToolbar,
   PromptInputTools,
 } from "@repo/elements/prompt-input";
 import { Suggestion, Suggestions } from "@repo/elements/suggestion";
@@ -79,7 +79,7 @@ const Example = () => {
           placeholder="Ask me about anything..."
           value={text}
         />
-        <PromptInputToolbar>
+        <PromptInputFooter>
           <PromptInputTools>
             <PromptInputButton>
               <PlusIcon size={16} />
@@ -91,23 +91,23 @@ const Example = () => {
               <GlobeIcon size={16} />
               <span>Search</span>
             </PromptInputButton>
-            <PromptInputModelSelect onValueChange={setModel} value={model}>
-              <PromptInputModelSelectTrigger>
-                <PromptInputModelSelectValue />
-              </PromptInputModelSelectTrigger>
-              <PromptInputModelSelectContent>
+            <PromptInputSelect onValueChange={setModel} value={model}>
+              <PromptInputSelectTrigger>
+                <PromptInputSelectValue />
+              </PromptInputSelectTrigger>
+              <PromptInputSelectContent>
                 {models.map((model) => (
-                  <PromptInputModelSelectItem key={model.id} value={model.id}>
+                  <PromptInputSelectItem key={model.id} value={model.id}>
                     {model.name}
-                  </PromptInputModelSelectItem>
+                  </PromptInputSelectItem>
                 ))}
-              </PromptInputModelSelectContent>
-            </PromptInputModelSelect>
+              </PromptInputSelectContent>
+            </PromptInputSelect>
           </PromptInputTools>
           <PromptInputSubmit>
             <SendIcon size={16} />
           </PromptInputSubmit>
-        </PromptInputToolbar>
+        </PromptInputFooter>
       </PromptInput>
     </div>
   );

@@ -1,19 +1,19 @@
 "use client";
 
 import {
-  Branch,
-  BranchMessages,
-  BranchNext,
-  BranchPage,
-  BranchPrevious,
-  BranchSelector,
-} from "@repo/elements/branch";
+  MessageBranch,
+  MessageBranchContent,
+  MessageBranchNext,
+  MessageBranchPage,
+  MessageBranchPrevious,
+  MessageBranchSelector,
+} from "@repo/elements/message";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@repo/elements/conversation";
-import { Message, MessageAvatar, MessageContent } from "@repo/elements/message";
+import { Message, MessageContent } from "@repo/elements/message";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -24,23 +24,32 @@ import {
   PromptInputAttachments,
   PromptInputBody,
   PromptInputButton,
+  PromptInputFooter,
+  PromptInputHeader,
   type PromptInputMessage,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputToolbar,
   PromptInputTools,
 } from "@repo/elements/prompt-input";
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  ModelSelectorLogoGroup,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from "@repo/elements/model-selector";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from "@repo/elements/reasoning";
-import { Response } from "@repo/elements/response";
+import { MessageResponse } from "@repo/elements/message";
 import {
   Source,
   Sources,
@@ -49,7 +58,7 @@ import {
 } from "@repo/elements/sources";
 import { Suggestion, Suggestions } from "@repo/elements/suggestion";
 import type { ToolUIPart } from "ai";
-import { GlobeIcon, MicIcon } from "lucide-react";
+import { CheckIcon, GlobeIcon, MicIcon } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -74,8 +83,6 @@ type MessageType = {
     result: string | undefined;
     error: string | undefined;
   }[];
-  avatar: string;
-  name: string;
 };
 
 const initialMessages: MessageType[] = [
@@ -88,8 +95,6 @@ const initialMessages: MessageType[] = [
         content: "Can you explain how to use React hooks effectively?",
       },
     ],
-    avatar: "https://github.com/haydenbleasel.png",
-    name: "Hayden Bleasel",
   },
   {
     key: nanoid(),
@@ -162,14 +167,14 @@ React hooks are a powerful feature that let you use state and other React featur
 \`\`\`jsx
 function ProfilePage({ userId }) {
   const [user, setUser] = useState(null);
-  
+
   useEffect(() => {
     // This runs after render and when userId changes
     fetchUser(userId).then(userData => {
       setUser(userData);
     });
   }, [userId]);
-  
+
   return user ? <Profile user={user} /> : <Loading />;
 }
 \`\`\`
@@ -177,8 +182,6 @@ function ProfilePage({ userId }) {
 Would you like me to explain any specific hook in more detail?`,
       },
     ],
-    avatar: "https://github.com/openai.png",
-    name: "OpenAI",
   },
   {
     key: nanoid(),
@@ -200,15 +203,13 @@ Would you like me to explain any specific hook in more detail?`,
           "Thanks for the overview! Could you dive deeper into the specific use cases where useCallback and useMemo make the biggest difference in React applications?",
       },
     ],
-    avatar: "https://github.com/haydenbleasel.png",
-    name: "Hayden Bleasel",
   },
   {
     key: nanoid(),
     from: "assistant",
     reasoning: {
       content: `The user is asking for a detailed explanation of useCallback and useMemo. I should provide a clear and concise explanation of each hook's purpose and how they differ.
-      
+
 The useCallback hook is used to memoize functions to prevent unnecessary re-renders of child components that receive functions as props.
 
 The useMemo hook is used to memoize values to avoid expensive recalculations on every render.
@@ -266,21 +267,45 @@ const sortedList = useMemo(() => expensiveSort(items), [items]);
 Don't overuse these hooks! They come with their own overhead. Only use them when you have identified a genuine performance issue.`,
       },
     ],
-    avatar: "https://github.com/openai.png",
-    name: "OpenAI",
   },
 ];
 
 const models = [
-  { id: "gpt-4", name: "GPT-4" },
-  { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-  { id: "claude-2", name: "Claude 2" },
-  { id: "claude-instant", name: "Claude Instant" },
-  { id: "palm-2", name: "PaLM 2" },
-  { id: "llama-2-70b", name: "Llama 2 70B" },
-  { id: "llama-2-13b", name: "Llama 2 13B" },
-  { id: "cohere-command", name: "Command" },
-  { id: "mistral-7b", name: "Mistral 7B" },
+  {
+    id: "gpt-4o",
+    name: "GPT-4o",
+    chef: "OpenAI",
+    chefSlug: "openai",
+    providers: ["openai", "azure"],
+  },
+  {
+    id: "gpt-4o-mini",
+    name: "GPT-4o Mini",
+    chef: "OpenAI",
+    chefSlug: "openai",
+    providers: ["openai", "azure"],
+  },
+  {
+    id: "claude-opus-4-20250514",
+    name: "Claude 4 Opus",
+    chef: "Anthropic",
+    chefSlug: "anthropic",
+    providers: ["anthropic", "azure", "google", "amazon-bedrock"],
+  },
+  {
+    id: "claude-sonnet-4-20250514",
+    name: "Claude 4 Sonnet",
+    chef: "Anthropic",
+    chefSlug: "anthropic",
+    providers: ["anthropic", "azure", "google", "amazon-bedrock"],
+  },
+  {
+    id: "gemini-2.0-flash-exp",
+    name: "Gemini 2.0 Flash",
+    chef: "Google",
+    chefSlug: "google",
+    providers: ["google"],
+  },
 ];
 
 const suggestions = [
@@ -304,6 +329,7 @@ const mockResponses = [
 
 const Example = () => {
   const [model, setModel] = useState<string>(models[0].id);
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [text, setText] = useState<string>("");
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
   const [useMicrophone, setUseMicrophone] = useState<boolean>(false);
@@ -314,6 +340,8 @@ const Example = () => {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
     null
   );
+
+  const selectedModelData = models.find((m) => m.id === model);
 
   const streamResponse = useCallback(
     async (messageId: string, content: string) => {
@@ -362,8 +390,6 @@ const Example = () => {
             content,
           },
         ],
-        avatar: "https://github.com/haydenbleasel.png",
-        name: "User",
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -382,8 +408,6 @@ const Example = () => {
               content: "",
             },
           ],
-          avatar: "https://github.com/openai.png",
-          name: "Assistant",
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
@@ -423,8 +447,8 @@ const Example = () => {
       <Conversation>
         <ConversationContent>
           {messages.map(({ versions, ...message }) => (
-            <Branch defaultBranch={0} key={message.key}>
-              <BranchMessages>
+            <MessageBranch defaultBranch={0} key={message.key}>
+              <MessageBranchContent>
                 {versions.map((version) => (
                   <Message
                     from={message.from}
@@ -454,21 +478,20 @@ const Example = () => {
                         </Reasoning>
                       )}
                       <MessageContent>
-                        <Response>{version.content}</Response>
+                        <MessageResponse>{version.content}</MessageResponse>
                       </MessageContent>
                     </div>
-                    <MessageAvatar name={message.name} src={message.avatar} />
                   </Message>
                 ))}
-              </BranchMessages>
+              </MessageBranchContent>
               {versions.length > 1 && (
-                <BranchSelector from={message.from}>
-                  <BranchPrevious />
-                  <BranchPage />
-                  <BranchNext />
-                </BranchSelector>
+                <MessageBranchSelector from={message.from}>
+                  <MessageBranchPrevious />
+                  <MessageBranchPage />
+                  <MessageBranchNext />
+                </MessageBranchSelector>
               )}
-            </Branch>
+            </MessageBranch>
           ))}
         </ConversationContent>
         <ConversationScrollButton />
@@ -485,16 +508,18 @@ const Example = () => {
         </Suggestions>
         <div className="w-full px-4 pb-4">
           <PromptInput globalDrop multiple onSubmit={handleSubmit}>
-            <PromptInputBody>
+            <PromptInputHeader>
               <PromptInputAttachments>
                 {(attachment) => <PromptInputAttachment data={attachment} />}
               </PromptInputAttachments>
+            </PromptInputHeader>
+            <PromptInputBody>
               <PromptInputTextarea
                 onChange={(event) => setText(event.target.value)}
                 value={text}
               />
             </PromptInputBody>
-            <PromptInputToolbar>
+            <PromptInputFooter>
               <PromptInputTools>
                 <PromptInputActionMenu>
                   <PromptInputActionMenuTrigger />
@@ -516,27 +541,67 @@ const Example = () => {
                   <GlobeIcon size={16} />
                   <span>Search</span>
                 </PromptInputButton>
-                <PromptInputModelSelect onValueChange={setModel} value={model}>
-                  <PromptInputModelSelectTrigger>
-                    <PromptInputModelSelectValue />
-                  </PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectContent>
-                    {models.map((model) => (
-                      <PromptInputModelSelectItem
-                        key={model.id}
-                        value={model.id}
-                      >
-                        {model.name}
-                      </PromptInputModelSelectItem>
-                    ))}
-                  </PromptInputModelSelectContent>
-                </PromptInputModelSelect>
+                <ModelSelector
+                  onOpenChange={setModelSelectorOpen}
+                  open={modelSelectorOpen}
+                >
+                  <ModelSelectorTrigger asChild>
+                    <PromptInputButton>
+                      {selectedModelData?.chefSlug && (
+                        <ModelSelectorLogo provider={selectedModelData.chefSlug} />
+                      )}
+                      {selectedModelData?.name && (
+                        <ModelSelectorName>
+                          {selectedModelData.name}
+                        </ModelSelectorName>
+                      )}
+                    </PromptInputButton>
+                  </ModelSelectorTrigger>
+                  <ModelSelectorContent>
+                    <ModelSelectorInput placeholder="Search models..." />
+                    <ModelSelectorList>
+                      <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                      {["OpenAI", "Anthropic", "Google"].map((chef) => (
+                        <ModelSelectorGroup key={chef} heading={chef}>
+                          {models
+                            .filter((m) => m.chef === chef)
+                            .map((m) => (
+                              <ModelSelectorItem
+                                key={m.id}
+                                onSelect={() => {
+                                  setModel(m.id);
+                                  setModelSelectorOpen(false);
+                                }}
+                                value={m.id}
+                              >
+                                <ModelSelectorLogo provider={m.chefSlug} />
+                                <ModelSelectorName>{m.name}</ModelSelectorName>
+                                <ModelSelectorLogoGroup>
+                                  {m.providers.map((provider) => (
+                                    <ModelSelectorLogo
+                                      key={provider}
+                                      provider={provider}
+                                    />
+                                  ))}
+                                </ModelSelectorLogoGroup>
+                                {model === m.id ? (
+                                  <CheckIcon className="ml-auto size-4" />
+                                ) : (
+                                  <div className="ml-auto size-4" />
+                                )}
+                              </ModelSelectorItem>
+                            ))}
+                        </ModelSelectorGroup>
+                      ))}
+                    </ModelSelectorList>
+                  </ModelSelectorContent>
+                </ModelSelector>
               </PromptInputTools>
               <PromptInputSubmit
                 disabled={!(text.trim() || status) || status === "streaming"}
                 status={status}
               />
-            </PromptInputToolbar>
+            </PromptInputFooter>
           </PromptInput>
         </div>
       </div>

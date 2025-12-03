@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  Branch,
-  BranchMessages,
-  BranchNext,
-  BranchPage,
-  BranchPrevious,
-  BranchSelector,
-} from "@repo/elements/branch";
+  MessageBranch,
+  MessageBranchContent,
+  MessageBranchNext,
+  MessageBranchPage,
+  MessageBranchPrevious,
+  MessageBranchSelector,
+} from "@repo/elements/message";
 import {
   Conversation,
   ConversationContent,
@@ -17,29 +17,45 @@ import { Message, MessageContent } from "@repo/elements/message";
 import {
   PromptInput,
   PromptInputButton,
+  PromptInputFooter,
   type PromptInputMessage,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
   PromptInputTextarea,
-  PromptInputToolbar,
   PromptInputTools,
 } from "@repo/elements/prompt-input";
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  ModelSelectorLogoGroup,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from "@repo/elements/model-selector";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from "@repo/elements/reasoning";
-import { Response } from "@repo/elements/response";
+import { MessageResponse } from "@repo/elements/message";
 import {
   Source,
   Sources,
   SourcesContent,
   SourcesTrigger,
 } from "@repo/elements/sources";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@repo/shadcn-ui/components/ui/dropdown-menu";
+import { cn } from "@repo/shadcn-ui/lib/utils";
 import type { ToolUIPart } from "ai";
+import { CheckIcon } from "lucide-react";
 import {
   AudioWaveformIcon,
   CameraIcon,
@@ -54,13 +70,6 @@ import {
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
 type MessageType = {
   key: string;
@@ -82,21 +91,30 @@ type MessageType = {
     result: string | undefined;
     error: string | undefined;
   }[];
-  avatar: string;
-  name: string;
   isReasoningComplete?: boolean;
   isContentComplete?: boolean;
   isReasoningStreaming?: boolean;
 };
 
 const models = [
-  { id: "grok-3", name: "Grok-3" },
-  { id: "grok-2-1212", name: "Grok-2-1212" },
+  {
+    id: "grok-3",
+    name: "Grok-3",
+    chef: "xAI",
+    chefSlug: "xai",
+    providers: ["xai"],
+  },
+  {
+    id: "grok-2-1212",
+    name: "Grok-2-1212",
+    chef: "xAI",
+    chefSlug: "xai",
+    providers: ["xai"],
+  },
 ];
 
 const mockMessages: MessageType[] = [
   {
-    avatar: "",
     key: nanoid(),
     from: "user",
     versions: [
@@ -105,10 +123,8 @@ const mockMessages: MessageType[] = [
         content: "Can you explain how to use React hooks effectively?",
       },
     ],
-    name: "Hayden Bleasel",
   },
   {
-    avatar: "",
     key: nanoid(),
     from: "assistant",
     sources: [
@@ -194,10 +210,8 @@ function ProfilePage({ userId }) {
 Would you like me to explain any specific hook in more detail?`,
       },
     ],
-    name: "OpenAI",
   },
   {
-    avatar: "",
     key: nanoid(),
     from: "user",
     versions: [
@@ -217,10 +231,8 @@ Would you like me to explain any specific hook in more detail?`,
           "Thanks for the overview! Could you dive deeper into the specific use cases where useCallback and useMemo make the biggest difference in React applications?",
       },
     ],
-    name: "Hayden Bleasel",
   },
   {
-    avatar: "",
     key: nanoid(),
     from: "assistant",
     reasoning: {
@@ -289,11 +301,10 @@ Remember that these ~~outdated approaches~~ should be avoided:
 - ~~Manual event listener cleanup~~ - Let \`useEffect\` handle it`,
       },
     ],
-    name: "OpenAI",
   },
 ];
 
-const mockResponses = [
+const mockMessageResponses = [
   "That's a great question! Let me help you understand this concept better. The key thing to remember is that proper implementation requires careful consideration of the underlying principles and best practices in the field.",
   "I'd be happy to explain this topic in detail. From my understanding, there are several important factors to consider when approaching this problem. Let me break it down step by step for you.",
   "This is an interesting topic that comes up frequently. The solution typically involves understanding the core concepts and applying them in the right context. Here's what I recommend...",
@@ -303,6 +314,7 @@ const mockResponses = [
 
 const Example = () => {
   const [model, setModel] = useState<string>(models[0].id);
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [text, setText] = useState<string>("");
   const [useWebSearch, setUseWebSearch] = useState<boolean>(false);
   const [useMicrophone, setUseMicrophone] = useState<boolean>(false);
@@ -313,6 +325,8 @@ const Example = () => {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
     null
   );
+
+  const selectedModelData = models.find((m) => m.id === model);
 
   const streamReasoning = async (
     messageKey: string,
@@ -400,7 +414,7 @@ const Example = () => {
     );
   };
 
-  const streamResponse = useCallback(
+  const streamMessageResponse = useCallback(
     async (
       messageKey: string,
       versionId: string,
@@ -451,14 +465,14 @@ const Example = () => {
       if (!firstVersion) return;
 
       // Stream the response
-      await streamResponse(
+      await streamMessageResponse(
         newMessage.key,
         firstVersion.id,
         firstVersion.content,
         message.reasoning
       );
     },
-    [streamResponse]
+    [streamMessageResponse]
   );
 
   const addUserMessage = useCallback(
@@ -472,8 +486,6 @@ const Example = () => {
             content,
           },
         ],
-        avatar: "",
-        name: "User",
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -481,8 +493,8 @@ const Example = () => {
       setTimeout(() => {
         const assistantMessageKey = `assistant-${Date.now()}`;
         const assistantMessageId = `version-${Date.now()}`;
-        const randomResponse =
-          mockResponses[Math.floor(Math.random() * mockResponses.length)];
+        const randomMessageResponse =
+          mockMessageResponses[Math.floor(Math.random() * mockMessageResponses.length)];
 
         // Create reasoning for some responses
         const shouldHaveReasoning = Math.random() > 0.5;
@@ -503,8 +515,6 @@ const Example = () => {
               content: "",
             },
           ],
-          name: "Assistant",
-          avatar: "",
           reasoning: reasoning ? { ...reasoning, content: "" } : undefined,
           isReasoningComplete: false,
           isContentComplete: false,
@@ -512,15 +522,15 @@ const Example = () => {
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
-        streamResponse(
+        streamMessageResponse(
           assistantMessageKey,
           assistantMessageId,
-          randomResponse,
+          randomMessageResponse,
           reasoning
         );
       }, 500);
     },
-    [streamResponse]
+    [streamMessageResponse]
   );
 
   useEffect(() => {
@@ -578,8 +588,8 @@ const Example = () => {
       <Conversation>
         <ConversationContent>
           {messages.map(({ versions, ...message }) => (
-            <Branch defaultBranch={0} key={message.key}>
-              <BranchMessages>
+            <MessageBranch defaultBranch={0} key={message.key}>
+              <MessageBranchContent>
                 {versions.map((version) => (
                   <Message
                     from={message.from}
@@ -620,21 +630,21 @@ const Example = () => {
                             "group-[.is-assistant]:bg-transparent group-[.is-assistant]:p-0 group-[.is-assistant]:text-foreground"
                           )}
                         >
-                          <Response>{version.content}</Response>
+                          <MessageResponse>{version.content}</MessageResponse>
                         </MessageContent>
                       )}
                     </div>
                   </Message>
                 ))}
-              </BranchMessages>
+              </MessageBranchContent>
               {versions.length > 1 && (
-                <BranchSelector className="px-0" from={message.from}>
-                  <BranchPrevious />
-                  <BranchPage />
-                  <BranchNext />
-                </BranchSelector>
+                <MessageBranchSelector className="px-0" from={message.from}>
+                  <MessageBranchPrevious />
+                  <MessageBranchPage />
+                  <MessageBranchNext />
+                </MessageBranchSelector>
               )}
-            </Branch>
+            </MessageBranch>
           ))}
         </ConversationContent>
         <ConversationScrollButton />
@@ -650,7 +660,7 @@ const Example = () => {
             placeholder="How can Grok help?"
             value={text}
           />
-          <PromptInputToolbar className="p-2.5">
+          <PromptInputFooter className="p-2.5">
             <PromptInputTools>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -701,7 +711,7 @@ const Example = () => {
                 <div className="h-full w-px bg-border" />
                 <PromptInputButton
                   className="rounded-r-full"
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
                 >
                   <ChevronDownIcon size={16} />
@@ -716,18 +726,57 @@ const Example = () => {
               </PromptInputButton>
             </PromptInputTools>
             <div className="flex items-center gap-2">
-              <PromptInputModelSelect onValueChange={setModel} value={model}>
-                <PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectValue />
-                </PromptInputModelSelectTrigger>
-                <PromptInputModelSelectContent>
-                  {models.map((model) => (
-                    <PromptInputModelSelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </PromptInputModelSelectItem>
-                  ))}
-                </PromptInputModelSelectContent>
-              </PromptInputModelSelect>
+              <ModelSelector
+                onOpenChange={setModelSelectorOpen}
+                open={modelSelectorOpen}
+              >
+                <ModelSelectorTrigger asChild>
+                  <PromptInputButton>
+                    {selectedModelData?.chefSlug && (
+                      <ModelSelectorLogo provider={selectedModelData.chefSlug} />
+                    )}
+                    {selectedModelData?.name && (
+                      <ModelSelectorName>
+                        {selectedModelData.name}
+                      </ModelSelectorName>
+                    )}
+                  </PromptInputButton>
+                </ModelSelectorTrigger>
+                <ModelSelectorContent>
+                  <ModelSelectorInput placeholder="Search models..." />
+                  <ModelSelectorList>
+                    <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                    <ModelSelectorGroup heading="xAI">
+                      {models.map((m) => (
+                        <ModelSelectorItem
+                          key={m.id}
+                          onSelect={() => {
+                            setModel(m.id);
+                            setModelSelectorOpen(false);
+                          }}
+                          value={m.id}
+                        >
+                          <ModelSelectorLogo provider={m.chefSlug} />
+                          <ModelSelectorName>{m.name}</ModelSelectorName>
+                          <ModelSelectorLogoGroup>
+                            {m.providers.map((provider) => (
+                              <ModelSelectorLogo
+                                key={provider}
+                                provider={provider}
+                              />
+                            ))}
+                          </ModelSelectorLogoGroup>
+                          {model === m.id ? (
+                            <CheckIcon className="ml-auto size-4" />
+                          ) : (
+                            <div className="ml-auto size-4" />
+                          )}
+                        </ModelSelectorItem>
+                      ))}
+                    </ModelSelectorGroup>
+                  </ModelSelectorList>
+                </ModelSelectorContent>
+              </ModelSelector>
               <PromptInputButton
                 className="rounded-full bg-foreground font-medium text-background"
                 onClick={() => setUseMicrophone(!useMicrophone)}
@@ -737,7 +786,7 @@ const Example = () => {
                 <span className="sr-only">Voice</span>
               </PromptInputButton>
             </div>
-          </PromptInputToolbar>
+          </PromptInputFooter>
         </PromptInput>
       </div>
     </div>
